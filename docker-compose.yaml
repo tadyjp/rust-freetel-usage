@@ -1,0 +1,4 @@
+rust:
+  build: .
+  volumes:
+    - "./docker-mount:/opt/rust"
