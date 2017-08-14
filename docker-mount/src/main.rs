@@ -1,38 +1,42 @@
-extern crate rand;
+extern crate futures;
+extern crate hyper;
+extern crate tokio_core;
 
-use std::io;
-use std::cmp::Ordering;
-use rand::Rng;
+// extern crate pretty_env_logger;
+
+// use std::env;
+use std::io::{self, Write};
+
+use futures::Future;
+use futures::stream::Stream;
+
+use hyper::Client;
 
 fn main() {
-    println!("Guess the number!");
+    // pretty_env_logger::init().unwrap();
 
-    let secret_number = rand::thread_rng().gen_range(1, 10);
+    let url = "http://httpbin.org/ip";
 
-    // println!("The secret number is: {}", secret_number);
-
-    loop {
-        println!("Please input your number");
-
-        let mut guess = String::new();
-
-        io::stdin().read_line(&mut guess)
-            .expect("Failed to read line");
-
-        let guess: u32 = match guess.trim().parse() {
-            Ok(num) => num,
-            Err(_)  => continue,
-        };
-
-        println!("Your guess: {}", guess);
-
-        match guess.cmp(&secret_number) {
-            Ordering::Less    => println!("Too small!"),
-            Ordering::Greater => println!("Too big!"),
-            Ordering::Equal   => {
-                println!("You win!");
-                break;
-            }
-        }
+    let url = url.parse::<hyper::Uri>().unwrap();
+    if url.scheme() != Some("http") {
+        println!("This example only works with 'http' URLs.");
+        return;
     }
+
+    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let handle = core.handle();
+    let client = Client::new(&handle);
+
+    let work = client.get(url).and_then(|res| {
+        println!("Response: {}", res.status());
+        println!("Headers: \n{}", res.headers());
+
+        res.body().for_each(|chunk| {
+            io::stdout().write_all(&chunk).map_err(From::from)
+        })
+    }).map(|_| {
+        println!("\n\nDone.");
+    });
+
+    core.run(work).unwrap();
 }
