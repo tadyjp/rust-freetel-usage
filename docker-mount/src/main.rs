@@ -1,42 +1,13 @@
-extern crate futures;
-extern crate hyper;
-extern crate tokio_core;
+extern crate curl;
 
-// extern crate pretty_env_logger;
+use std::io::{stdout, Write};
+use curl::easy::Easy;
 
-// use std::env;
-use std::io::{self, Write};
-
-use futures::Future;
-use futures::stream::Stream;
-
-use hyper::Client;
-
-fn main() {
-    // pretty_env_logger::init().unwrap();
-
-    let url = "http://httpbin.org/ip";
-
-    let url = url.parse::<hyper::Uri>().unwrap();
-    if url.scheme() != Some("http") {
-        println!("This example only works with 'http' URLs.");
-        return;
-    }
-
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-    let handle = core.handle();
-    let client = Client::new(&handle);
-
-    let work = client.get(url).and_then(|res| {
-        println!("Response: {}", res.status());
-        println!("Headers: \n{}", res.headers());
-
-        res.body().for_each(|chunk| {
-            io::stdout().write_all(&chunk).map_err(From::from)
-        })
-    }).map(|_| {
-        println!("\n\nDone.");
-    });
-
-    core.run(work).unwrap();
+fn main(){
+    let mut easy = Easy::new();
+    easy.url("https://www.rust-lang.org/").unwrap();
+    easy.write_function(|data| {
+        Ok(stdout().write(data).unwrap())
+    }).unwrap();
+    easy.perform().unwrap();
 }
