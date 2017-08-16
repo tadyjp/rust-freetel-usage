@@ -6,4 +6,8 @@ authors = [ "tady <a.dat.jp@gmail.com>" ]
 
 [dependencies]
 
-curl = "0.4.8"
+hyper = "0.11"
+hyper-openssl = "*"
+tokio-core = "0.1"
+futures = "0.1"
+cookie = "0.9"
