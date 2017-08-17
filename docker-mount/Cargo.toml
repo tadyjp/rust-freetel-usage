@@ -8,3 +8,5 @@ authors = [ "tady <a.dat.jp@gmail.com>" ]
 
 reqwest = "0.7.2"
 cookie = "0.9"
+select = "0.4.2"
+regex = "*"
