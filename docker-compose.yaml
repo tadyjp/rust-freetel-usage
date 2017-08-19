@@ -1,4 +1,24 @@
-rust:
-  build: .
-  volumes:
-    - "./docker-mount:/opt/rust"
+version: "2"
+
+services:
+  rust:
+    build: .
+    volumes:
+      - "./mount/rust:/opt/rust"
+
+  influxdb:
+    image: influxdb
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+    volumes:
+      - "./mount/influxdb:/var/lib/influxdb"
+    environment:
+      - INFLUXDB_ADMIN_ENABLED=true
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./mount/grafana:/var/lib/grafana"
