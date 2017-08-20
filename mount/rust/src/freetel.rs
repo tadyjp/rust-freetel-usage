@@ -8,8 +8,6 @@ const LOGIN_FORM_URL: &str = "https://mypage.freetel.jp/login";
 const USAGE_PAGE_URL: &str = "https://mypage.freetel.jp/SavingMode/saveModeDetail/";
 const SESSION_COOKIE_NAME: &str = "CAKEPHP";
 const INFLUXDB_URL: &str = "http://rusthelloworld_influxdb_1:8086/write?db=homelog";
-const USER_AGENT: &str = "Rust/reqwest freetel_usage";
-
 
 // freetel マイページのログインセッションを取得
 fn get_session_cookie(email: &str, password: &str) -> String {
@@ -32,7 +30,6 @@ fn get_session_cookie(email: &str, password: &str) -> String {
 
     // HTTP Post リクエスト実行
     let resp = client.post(LOGIN_FORM_URL).unwrap()
-        .header(header::UserAgent::new(USER_AGENT))
         .form(&params).unwrap()
         .send().unwrap();
 
@@ -41,25 +38,23 @@ fn get_session_cookie(email: &str, password: &str) -> String {
         panic!("request failed! {}, {:?}", LOGIN_FORM_URL, resp);
     }
 
+    println!("{:?}\n", resp);
+
     // Set-Cookie ヘッダを取得
     if let Some(set_cookies) = resp.headers().get::<header::SetCookie>() {
-        let mut cookie_value = String::new();
+        let mut set_cookie_value = String::new();
         for set_cookie in &set_cookies.0 {
-            println!("Set-Cookie: {:?}", set_cookie);
-            let set_cookie = set_cookie.clone();
-            let c = Cookie::parse(set_cookie).expect("Failed to parse cookie.");
+            let c = Cookie::parse(set_cookie.clone()).expect("Failed to parse cookie.");
             let (name, value) = c.name_value();
 
-            println!("name: {:?}, value: {:?}", name, value);
-
             if name == SESSION_COOKIE_NAME {
-                cookie_value = value.to_string();
+                set_cookie_value = value.to_string();
             }
         }
-        if cookie_value != "" {
-            return cookie_value;
+        if set_cookie_value != "" {
+            return set_cookie_value;
         }
-        panic!("Set-Cookie '{}' does not exist!", SESSION_COOKIE_NAME);
+        panic!("Set-Cookie '{}' does not exist!, Set-Cookies: {:?}", SESSION_COOKIE_NAME, set_cookies);
     } else {
         panic!("Set-Cookie '{}' does not exist!", SESSION_COOKIE_NAME);
     }
@@ -78,6 +73,10 @@ fn get_usage_html(tel: &str, cookie_value: &str) -> String {
 
     if !resp.status().is_success() {
         panic!("request failed!: {}", usage_page_url);
+    }
+
+    if &resp.url().to_string() != usage_page_url {
+        panic!("login failed!: redirected to {}", resp.url());
     }
 
     let mut content = String::new();
@@ -123,7 +122,7 @@ fn post_to_influxdb((current_usage, usage_limit): ((f32, f32))) {
         format!("freetel_usage value={} {}", current_usage, current_time_nano),
         format!("freetel_limit value={} {}", usage_limit, current_time_nano)
     ].join("\n");
-    
+
     let client = reqwest::Client::new().unwrap();
     let resp = client.post(INFLUXDB_URL).unwrap()
         .body(data.clone())
@@ -141,7 +140,7 @@ fn post_to_influxdb((current_usage, usage_limit): ((f32, f32))) {
 // 2. 利用状況のギガ数を取得
 // 3. InfluxDB にギガ数を登録
 pub fn fetch_usage() {
-    let email = env::var("FREETEL_EMAIL").expect("env 'FREETEL_EMAIL' not found"); // TODO: error message...
+    let email = env::var("FREETEL_EMAIL").expect("env 'FREETEL_EMAIL' not found");
     let password = env::var("FREETEL_PASSWORD").expect("env 'FREETEL_PASSWORD' not found");
     let tel = env::var("FREETEL_TEL").expect("env 'FREETEL_TEL' not found");
 
@@ -158,4 +157,6 @@ pub fn fetch_usage() {
 
     // InfluxDB にギガ数を登録
     post_to_influxdb(usage);
+
+    println!("Success!!");
 }

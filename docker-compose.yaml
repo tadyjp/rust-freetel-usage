@@ -13,8 +13,6 @@ services:
       - "8086:8086"
     volumes:
       - "./mount/influxdb:/var/lib/influxdb"
-    environment:
-      - INFLUXDB_ADMIN_ENABLED=true
 
   grafana:
     image: grafana/grafana
